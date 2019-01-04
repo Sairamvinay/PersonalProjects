@@ -2,6 +2,10 @@ from collections import defaultdict
 class ChooseError(Exception):
     pass
 
+#The following Graph class contains all the required Basic Graph algorithms
+# Attributes: Number of vertices and whether is it Directed or not
+# and other important parameters such as parent, keys, weights and Visit which contains the visited vertex
+
 class Graph:
 
     def __init__(self,vertices = 0,Directed = True):
@@ -15,17 +19,21 @@ class Graph:
         self.unionkey = []
         self.UnionType = ""
         
-    #Directed check is performed so that if it is undirected, even the reverse of edges are stored
+    #Adds an edge based on Given weights and Directed or not graphs
+    #Directed check is performed so that if it is undirected, even the reverse of edges (So that it is easier for manipulation) are stored
     def addEdge(self,u,v,w = 0):
         self.graph[u].append(v)
-        self.weights[str(u) + '->' + str(v)] = w
+        self.weights[str(u) + '->' + str(v)] = w   #Weights are stored in dictionary in such a way the keys are strings containing u and v delimited by ->
         if not (self.Directed):
             self.graph[v].append(u)
             self.weights[str(v) + '->' + str(u)] = w
 
 
+    #initializes the parent and unionkey for Kruskals
+    #initializes according to the type of Union
     def initparent(self,UnionType = "R"):
 
+        ret = True
         self.parent = [None] * self.vertno
         self.unionkey = [None] * self.vertno
         try:
@@ -42,15 +50,22 @@ class Graph:
                     self.UnionType = UnionType
 
             else:
+                ret = False
                 raise ChooseError
 
         except:
             print "Wrong Choice! Please try again!!"
+
+        finally:
+            return ret
             
 
+    #Resets the Visit always whenever we want to perform searching through it
     def resetVisit(self):
         self.Visit = [False]*self.vertno
 
+    #Find by Compression algorithm to do the search
+        
     def find(self,vertex):
 
         if self.parent[vertex] == vertex:
@@ -59,6 +74,7 @@ class Graph:
         return self.find(self.parent[vertex])
 
 
+    #more generic Union to do the Union operation by Size (for "S") or Rank/Height (for "H")
     def Union(self,x,y):
         if self.UnionType == "S":
             self.UnionBySize(x,y)
@@ -66,6 +82,7 @@ class Graph:
         else:
             self.UnionByRank(x,y)
 
+    #Seperate functions for Union by Rank
     def UnionByRank(self,x,y):
 
         xroot = self.find(x)
@@ -86,6 +103,7 @@ class Graph:
             self.unionkey[yroot] += 1
 
 
+    #Seperate functions for Union by Size
     def UnionBySize(self,x,y):
 
         xroot = self.find(x)
@@ -101,7 +119,8 @@ class Graph:
             self.unionkey[xroot] += self.unionkey[yroot]
 
 
-    
+    #This method finds the vertex which has the minimum key value such that the vertex is unvisited.
+    #A helper method for both Dijkstras and Prims
     def pickMinUnvisit(self,key):
         m = 2**31
         ind = -1
@@ -112,43 +131,47 @@ class Graph:
 
         return ind
 
-
+    #Standard DFS method to do Depth First Search starting from Node
+    #Recursive method for DFS
     def DFS(self,node):
 
-        self.Visit[node] = True
-        print node
-        adj = self.graph[node]
+        self.Visit[node] = True         #Mark the current node as True
+        print node                  
+        adj = self.graph[node]          #if Node has no adjacent vertex, then adj = [] because of defaultdict
         for vert in adj:
             if not (self.Visit[vert]):
-                self.DFS(vert)
+                self.DFS(vert)          #If Unvisited, perform DFS on that vertex
 
 
-
+    #Standard BFS method to do Breadth First Search starting from vert
+    #Iterative method using Queue (basic Python List but deletion from starting of list)
     def BFS(self,vert):
         queue = []
         queue.append(vert)
-        self.Visit = [False] * len(self.graph)
-        self.Visit[vert] = True
+        self.resetVisit()
+        self.Visit[vert] = True     #Mark current node as true
         while queue:
-            u = queue.pop(0)
+            u = queue.pop(0)        #This is very important as the deletion is done from beginning of queue, u contains the deleted vertex. Functionality
             print u
-            adj = self.graph[u]
+            adj = self.graph[u]     
             for v in adj:
-                if not (self.Visit[v]):
+                if not (self.Visit[v]):     #if not visited, enqueue adjacent vertex into queue and mark it visited
                     queue.append(v)
                     self.Visit[v] = True
 
 
+    #This method does the iterative way of implementing DFS but with an order array which contains all the visited vertex
     def TopSort(self,v,order = []):
         self.Visit[v] = True
         adj = self.graph[v]
         for vert in adj:
             if not self.Visit[vert]:
-                self.TopSort(vert,order)
+                self.TopSort(vert,order)    #Very much similar to DFS() but vert is appended to order
 
 
-        order.append(v)
+        order.append(v)     #Difference between this method and DFS()
 
+    #The outer significant function to do TopSort by iterating through each vertex
     def Toporder(self):
 
         order = []
@@ -156,33 +179,14 @@ class Graph:
             if not self.Visit[i]:
                 self.TopSort(i,order)
 
-        order.reverse()
+        order.reverse()         #Reverse the order because the order stores visited vertices in the opposite order
         return order
 
-    
-    def Prims(self):
-        parents = [-1] * self.vertno
-        key = [2**31] *self.vertno
-        key[0] = 0
-        for v in range(self.vertno):
-            minkey = self.pickMinUnvisit(key)
-            self.Visit[minkey] = True
-            Adj = self.graph[minkey]
-            for vert in Adj:
-                st = str(minkey) + '->' + str(vert)
-                if (not self.Visit[vert]) and (key[vert] > self.weights[st]):
-                    key[vert] = self.weights[st]
-                    parents[vert] = minkey
 
-
-        for vertex in range(1,self.vertno):
-            print "Edge:",parents[vertex],"->",vertex,":",self.weights[str(parents[vertex]) + '->' + str(vertex)]
-
-
-
+    #Kruskals algorithm method
     def Kruskals(self,UnionType = "R"):
 
-        sortededges = []
+        sortededges = []            #contains the sorted edges in (edge,weight) form
         for edge, weight in sorted(self.weights.items(), key=lambda item: (item[1], item[0])):
             sortededges.append((edge,weight))
 
@@ -190,7 +194,11 @@ class Graph:
         kruskalorder = []
         itervar = 0
         numchosen = 0
-        self.initparent(UnionType)
+        ret = self.initparent(UnionType)
+        if not ret:
+            print "Not Possible to perform Kruskals!!"
+            return 
+        
         while numchosen < (self.vertno - 1):
 
             x,y = sortededges[itervar][0].split("->")
@@ -216,8 +224,31 @@ class Graph:
             print edge[0],'\t',edge[1]
                 
 
-    
+    #Method to implement Prims MST algorithm.
+    #This method picks each minimum key vertex and then iterates through each adjacent vertex and then the order is maintained using the Prims algorithm
+    # k = min(weight(edge),k)
+    def Prims(self):
+        parents = [-1] * self.vertno
+        key = [2**31] *self.vertno
+        key[0] = 0                              #0 is the root key
+        for v in range(self.vertno):
+            minkey = self.pickMinUnvisit(key)   #uses helper method to get min unvisited key vertex
+            self.Visit[minkey] = True
+            Adj = self.graph[minkey]
+            for vert in Adj:
+                st = str(minkey) + '->' + str(vert)
+                if (not self.Visit[vert]) and (key[vert] > self.weights[st]):
+                    key[vert] = self.weights[st]        #the prims algorithm of updating the key
+                    parents[vert] = minkey
 
+        print "Edge",'\t',"Weight"
+        for vertex in range(1,self.vertno):         #start from 1 because 0 is the root
+            print parents[vertex],"->",vertex,"\t",self.weights[str(parents[vertex]) + '->' + str(vertex)]
+
+
+    
+    
+    #Dijkstras method from the start index
     def Dijkstras(self,start):
 
         distances = [2**31] * self.vertno
@@ -237,10 +268,6 @@ class Graph:
 
         
         
-        
-
-
-
 #Test for BFS AND DFS
 #DFS should give: 2 0 1 3
 #BFS should give: 2 0 3 1
@@ -331,6 +358,13 @@ print "Graph4 is here:",g3.graph
 print "Dijkstras:"
 g3.Dijkstras(0)
 
+#Test for Kruskals: should give this
+'''
+Edge 	Weight
+2->3 	4
+0->3 	5
+0->1 	10
+'''
 
 g4 = Graph(4,True)
 g4.addEdge(0,1,10) 
@@ -339,7 +373,12 @@ g4.addEdge(0,3,5)
 g4.addEdge(1,3,15) 
 g4.addEdge(2,3,4)
 print "Graph5 is here:",g4.graph
-print "Kruskals:"
-print g4.Kruskals("S")
-print g4.Kruskals("R")
-print g4.Kruskals("H")
+print "Kruskals:"                   #Making sure that all three union's give the same answer
+print "Union by size:"
+g4.Kruskals("S")
+print "Union by Rank:"
+g4.Kruskals("R")
+print "Union by Height (same as rank):"
+g4.Kruskals("H")
+print "An incorrect parameter:"
+g4.Kruskals("I")                    #A test Case to yield an error
