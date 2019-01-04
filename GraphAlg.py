@@ -341,3 +341,5 @@ g4.addEdge(2,3,4)
 print "Graph5 is here:",g4.graph
 print "Kruskals:"
 print g4.Kruskals("S")
+print g4.Kruskals("R")
+print g4.Kruskals("H")
